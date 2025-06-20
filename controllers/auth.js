@@ -2,9 +2,10 @@ const { validationResult } = require("express-validator");
 const bycrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
+
 const User = require("../models/user");
 
-exports.register = (req, res) => {
+exports.register = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const error = new Error("Validation failed, entered data is incorrect.");

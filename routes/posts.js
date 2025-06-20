@@ -5,6 +5,7 @@ const Post = require('../models/post');
 const Comment = require('../models/comment');
 
 // create a new post
+// POST /api/posts
 router.post('/', async (req, res) => {
   try {
     const post = new Post(req.body);
