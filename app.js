@@ -1,65 +1,44 @@
+// Import core packages
 const express = require("express");
 const mongoose = require("mongoose");
-const bodyParser = require("body-parser");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
 require("dotenv").config();
 
-
-
-const app = express();
-app.use(express.json());
-
-
-app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-  );
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization"
-  );
-  next();
-});
-
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI).then(
-  () => {
-    console.log("Connected to MongoDB");
-  },
-  (err) => {
-    console.error("Failed to connect to MongoDB", err);
-  }
-);
-
-app.use(bodyParser.json());
-
-// Imort routes
+// Import routes
 const postRoutes = require("./routes/posts");
 const authRoutes = require("./routes/auth");
-const isAuth = require("./middleware/is-auth");
 
+const app = express();
+
+// Middleware
+app.use(cors({
+  origin: "http://localhost:3000",
+  credentials: true,
+}));
+
+app.use(cookieParser());
+app.use(express.json()); // Parses incoming JSON payloads
+
+// Connect to MongoDB
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log("✅ Connected to MongoDB"))
+.catch((err) => console.error("❌ MongoDB connection error:", err));
+
+// Routes
 app.use("/api/posts", postRoutes);
 app.use("/api/auth", authRoutes);
 
-// Start the server
-app.listen(process.env.PORT, () => {
-  console.log(`Server is running on port ${process.env.PORT}`);
-});
-
-// free endpoint
-app.get("/free-endpoint", (request, response) => {
-  response.json({ message: "You are free to access me anytime" });
-});
-
-// authentication endpoint
-// GET /auth-endpoint localhost:3000/auth-endpoint
-app.get("/auth-endpoint", isAuth, (request, response) => {
-  response.json({ message: "You are authorized to access me" });
-});
-
-// Handle 404 errors
-app.use((req, res, next) => {
+// 404 Handler
+app.use((req, res) => {
   res.status(404).json({ message: "Not Found" });
 });
 
+// Start the server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});

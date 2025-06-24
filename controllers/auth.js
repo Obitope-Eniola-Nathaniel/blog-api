@@ -1,20 +1,21 @@
 const { validationResult } = require("express-validator");
-const bycrypt = require("bcrypt");
+const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-
 
 const User = require("../models/user");
 
 exports.register = (req, res, next) => {
   const errors = validationResult(req);
+
   if (!errors.isEmpty()) {
-    const error = new Error("Validation failed, entered data is incorrect.");
-    error.statusCode = 422; // Unprocessable Entity
-    error.data = errors.array();
-    throw error;
+    // Return validation error as JSON
+    return res.status(422).json({
+      message: "Validation failed, entered data is incorrect.",
+      errors: errors.array(),
+    });
   }
   const { username, email, password } = req.body;
-  bycrypt
+  bcrypt
     .hash(password, 12)
     .then((hashedPassword) => {
       const user = new User({
@@ -35,42 +36,30 @@ exports.register = (req, res, next) => {
     });
 };
 
-exports.login = (req, res, next) => {
-  const { email, password } = req.body;
-  let loadedUser;
+exports.login = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
 
-  User.findOne({ email: email })
-    .then((user) => {
-      if (!user) {
-        const error = new Error("A user with this email could not be found.");
-        error.statusCode = 401; // Unauthorized
-        throw error;
-      }
-      loadedUser = user;
-      return bycrypt.compare(password, user.password);
-    })
-    .then((isEqual) => {
-      if (!isEqual) {
-        const error = new Error("Wrong password!");
-        error.statusCode = 401; // Unauthorized
-        throw error;
-      }
+    if (!email || !password) {
+      const error = new Error("Email and password are required");
+      error.statusCode = 400;
+      throw error;
+    }
 
-      const token = jwt.sign(
-        {
-          email: loadedUser.email,
-          userId: loadedUser._id.toString(),
-        },
-        "secret",
-        { expiresIn: "1h" }
-      );
+    const user = await User.findOne({ email });
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      const error = new Error("Invalid email or password");
+      error.statusCode = 401;
+      throw error;
+    }
 
-      res.status(200).json({ token: token, userId: loadedUser._id.toString() });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500; // Internal Server Error
-      }
-      next(err);
-    });
+    const token = jwt.sign({ userId: user._id }, "secret", { expiresIn: "1d" });
+
+    res
+      .cookie("TOKEN", token, { httpOnly: true, sameSite: "Lax", secure: false })
+      .status(200)
+      .json({ message: "Logged in successfully" });
+  } catch (err) {
+    next(err); // handled by global error middleware
+  }
 };

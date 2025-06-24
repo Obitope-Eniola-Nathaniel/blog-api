@@ -1,63 +1,46 @@
-const expreess = require('express');
+const expreess = require("express");
+const { body } = require("express-validator");
+
+const postController = require("../controllers/posts");
+const isAuth = require("../middleware/is-auth");
+
 const router = expreess.Router();
 
-const Post = require('../models/post');
-const Comment = require('../models/comment');
-
-// create a new post
-// POST /api/posts
-router.post('/', async (req, res) => {
-  try {
-    const post = new Post(req.body);
-    await post.save();
-    res.status(201).json(post);
-  } catch (error) {
-    // console.error(error);
-    res.status(400).json({ message: error.message });
-  }
-});
+// POST /api/posts/post
+router.post(
+  "/post",
+  isAuth,
+  [
+    body("title")
+      .trim()
+      .isLength({ min: 2 })
+      .withMessage("Title must be at least 5 characters long."),
+    body("content")
+      .trim()
+      .isLength({ min: 2 })
+      .withMessage("Content must be at least 5 characters long."),
+  ],
+  postController.createPost
+);
 
 // get all posts
-router.get('/', async (req, res) => {
-  try {
-    const posts = await Post.find().sort({ createdAt: -1 });
-    res.status(200).json(posts);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+// GET /api/posts/posts
+router.get("/posts", postController.getPosts);
 
-// Get a single post with comments
-router.get('/:id', async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.id);
-    if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
-    }
-    const comments = await Comment.find({ postId: req.params.id }).sort({ createdAt: -1 });
-    res.status(200).json({ post, comments });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
+router.get("/getpost/:id", isAuth, postController.getSinglePost);
 
 // add a comment to a post
-router.post('/:id/comments', async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.id);
-    if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
-    }
-    const comment = new Comment({
-      postId: req.params.id,
-      ...req.body
-    });
-    await comment.save();
-    res.status(201).json(comment);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
+// POST /api/posts/:id/comment
+router.post(
+  "/:id/comment",
+  isAuth,
+  [
+    body("content")
+      .trim()
+      .isLength({ min: 1 })
+      .withMessage("Comment content must not be empty."),
+  ],
+  postController.addComment
+);
 
 module.exports = router;
