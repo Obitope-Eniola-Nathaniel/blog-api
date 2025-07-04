@@ -55,7 +55,7 @@ exports.login = async (req, res, next) => {
 
     // Find user by email
     const user = await User.findOne({ email });
-    const isMatch = user && await bcrypt.compare(password, user.password);
+    const isMatch = user && (await bcrypt.compare(password, user.password));
 
     // Check if user exists and password is correct
     if (!user || !isMatch) {
@@ -67,7 +67,7 @@ exports.login = async (req, res, next) => {
     // Generate JWT
     const token = jwt.sign(
       { userId: user._id },
-      "secret", // ⚠️ Replace with environment variable in production
+      "secret", //  Replace with environment variable in production
       { expiresIn: "1d" }
     );
 
@@ -80,9 +80,15 @@ exports.login = async (req, res, next) => {
       })
       .status(200)
       .json({ message: "Logged in successfully" });
-
   } catch (err) {
     err.statusCode = err.statusCode || 500;
     next(err);
   }
+};
+
+exports.logout = (req, res) => {
+  return res
+    .clearCooke("TOKEN")
+    .status(200)
+    .json({ message: "Successfully logged out..." });
 };

@@ -46,4 +46,10 @@ router.post(
  */
 router.post("/login", authController.login);
 
+/**
+ * @route   POST /api/auth/logot
+ * @desc    Logot a new user
+ */
+router.post("/loout", authController.logout);
+
 module.exports = router;
